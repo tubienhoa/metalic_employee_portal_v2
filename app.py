@@ -1,6 +1,7 @@
 import streamlit as st
 import sys
 import os
+import bcrypt
 
 # Dam bao Python nhan dien thu muc goc cua du an khi chay tren Streamlit Cloud
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -8,6 +9,8 @@ if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
 
 from services.auth_service import login_screen, logout
+from services.sheets_service import update_user_password
+from services.audit_service import write_audit_log
 from pages.home import show_home
 from pages.documents import show_documents
 from pages.admin import show_admin
@@ -67,7 +70,32 @@ with st.sidebar:
     if st.button("🚪 Đăng Xuất", use_container_width=True, type="secondary"):
         logout()
 
-# Dieu huong noi dung theo lua chon cua nguoi dung
+    # Muc Doi mat khau dat duoi nut Dang Xuat
+    st.markdown("---")
+    with st.expander("🔐 Đổi mật khẩu cá nhân", expanded=False):
+        with st.form("sidebar_change_pwd_form"):
+            new_pw = st.text_input("Mật khẩu mới:", type="password", placeholder="Nhập pass mới...")
+            confirm_pw = st.text_input("Xác nhận lại:", type="password", placeholder="Nhập lại...")
+            btn_save = st.form_submit_button("Lưu thay đổi", type="primary", use_container_width=True)
+            
+            if btn_save:
+                if not new_pw or not confirm_pw:
+                    st.error("Vui lòng điền đủ thông tin.")
+                elif len(new_pw) < 6:
+                    st.error("Tối thiểu 6 ký tự.")
+                elif new_pw != confirm_pw:
+                    st.error("Xác nhận không khớp.")
+                else:
+                    salt = bcrypt.gensalt(rounds=12)
+                    hashed = bcrypt.hashpw(new_pw.encode("utf-8"), salt).decode("utf-8")
+                    username = user.get("Username")
+                    if update_user_password(username, hashed):
+                        write_audit_log(username, "CHANGE_PASSWORD", "Sidebar", "Doi mat khau ca nhan")
+                        st.success("Đổi mật khẩu thành công!")
+                    else:
+                        st.error("Lỗi cập nhật. Vui lòng thử lại.")
+
+# Dieu huong noi dung theo lua chon
 if choice == "🏠 Trang Chủ":
     show_home(user)
 elif choice == "📁 Kho Tài Liệu & Biểu Mẫu":
