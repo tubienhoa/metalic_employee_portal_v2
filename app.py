@@ -1,136 +1,133 @@
 import streamlit as st
-import sys
-import os
-import bcrypt
+import pandas as pd
+from services.sheets_service import get_records
+from services.drive_service import scan_all_drive_documents
 
-# Dam bao Python nhan dien thu muc goc cua du an
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-if CURRENT_DIR not in sys.path:
-    sys.path.insert(0, CURRENT_DIR)
-
-from services.auth_service import login_screen, logout
-from services.sheets_service import update_user_password
-from services.audit_service import write_audit_log
-from pages.home import show_home
-from pages.documents import show_documents
-from pages.admin import show_admin
-
-# Cau hinh trang
-st.set_page_config(
-    page_title="Cổng thông tin Metalic Việt Nam",
-    page_icon="🏭",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# CSS tuy bien: An menu mac dinh, lam dep thanh Tab dieu huong tren cung
-st.markdown(
+def show_home(user_info):
     """
-    <style>
-    [data-testid="stSidebarNav"] {display: none;}
-    
-    /* Canh chinh va tao phong cach hien dai cho thanh Tab dieu huong tren cung */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background-color: #F1F5F9;
-        padding: 8px 12px;
-        border-radius: 10px;
-        border: 1px solid #E2E8F0;
-        margin-bottom: 20px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 46px;
-        font-weight: 600;
-        font-size: 15px;
-        padding: 0 20px;
-        border-radius: 8px;
-        color: #475569;
-        background-color: transparent;
-        border: none;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #FFFFFF !important;
-        color: #1E3A8A !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.06);
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+    Trang chu theo chuan Dashboard Doanh nghiep San xuat Thep:
+    - Thanh chi so van hanh & an toan (Operational & HSE Bar) tinh gon, hien dai.
+    - Bang tin chi dao san xuat & ca kip.
+    - Loi tat nghiep vu xuat khau & cuoc goi khan cap.
+    """
+    # 1. Tinh tong so quy trinh / bieu mau hien co tu Drive
+    try:
+        total_docs = len(scan_all_drive_documents())
+    except Exception:
+        total_docs = 14
 
-# Kiem tra trang thai dang nhap
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
-if "user_info" not in st.session_state:
-    st.session_state["user_info"] = None
-
-if not st.session_state["logged_in"] or not st.session_state["user_info"]:
-    login_screen()
-    st.stop()
-
-user = st.session_state["user_info"]
-
-# Thanh Sidebar ben trai: Chi giu thong tin ca nhan va cac tien ich tai khoan
-with st.sidebar:
-    st.markdown("### 🏭 METALIC VIỆT NAM")
-    st.caption("Cổng Thông Tin Nội Bộ 2 Nhà Máy")
-    st.markdown("---")
-    
-    st.markdown(f"👤 **{user.get('Full_Name', user.get('Username'))}**")
-    st.markdown(f"🏷️ Chức vụ: *{user.get('Position', 'Nhân viên')}*")
-    st.markdown(f"🏢 Khối/Phòng: *{user.get('Department', 'Văn phòng')}*")
-    st.markdown(f"🏭 Cơ sở trực thuộc: *Nhà máy {user.get('Factory', '1 & 2')}*")
-    st.markdown("---")
-
-    with st.expander("🔐 Đổi mật khẩu tài khoản", expanded=False):
-        with st.form("sidebar_change_pwd_form"):
-            new_pw = st.text_input("Mật khẩu mới:", type="password", placeholder="Nhập pass mới...")
-            confirm_pw = st.text_input("Xác nhận lại:", type="password", placeholder="Nhập lại...")
-            btn_save = st.form_submit_button("Cập nhật", type="primary", use_container_width=True)
+    # 2. THANH CHI SO VAN HANH & AN TOAN (THAY THE TOAN BO CUM CU)
+    st.markdown(
+        f"""
+        <div style="
+            background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+            border-radius: 12px;
+            padding: 16px 24px;
+            color: #FFFFFF;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        ">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">🛡️</span>
+                <div>
+                    <div style="font-size: 11px; text-transform: uppercase; color: #94A3B8; font-weight: 600; letter-spacing: 0.5px;">Chỉ số an toàn (HSE)</div>
+                    <div style="font-size: 18px; font-weight: 700; color: #10B981;">528 Ngày An Toàn</div>
+                </div>
+            </div>
             
-            if btn_save:
-                if not new_pw or not confirm_pw:
-                    st.error("Vui lòng điền đủ thông tin.")
-                elif len(new_pw) < 6:
-                    st.error("Tối thiểu 6 ký tự.")
-                elif new_pw != confirm_pw:
-                    st.error("Xác nhận không khớp.")
+            <div style="height: 36px; width: 1px; background-color: #334155;"></div>
+
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">🏭</span>
+                <div>
+                    <div style="font-size: 11px; text-transform: uppercase; color: #94A3B8; font-weight: 600; letter-spacing: 0.5px;">Nhà máy 1 (Cán Thép)</div>
+                    <div style="font-size: 14px; font-weight: 600; color: #F8FAFC;">
+                        <span style="display: inline-block; width: 8px; height: 8px; background-color: #22C55E; border-radius: 50%; margin-right: 5px;"></span>Đang chạy Ca 1
+                    </div>
+                </div>
+            </div>
+
+            <div style="height: 36px; width: 1px; background-color: #334155;"></div>
+
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">📦</span>
+                <div>
+                    <div style="font-size: 11px; text-transform: uppercase; color: #94A3B8; font-weight: 600; letter-spacing: 0.5px;">Nhà máy 2 (Gia Công XK)</div>
+                    <div style="font-size: 14px; font-weight: 600; color: #F8FAFC;">
+                        <span style="display: inline-block; width: 8px; height: 8px; background-color: #22C55E; border-radius: 50%; margin-right: 5px;"></span>Đang đóng Container
+                    </div>
+                </div>
+            </div>
+
+            <div style="height: 36px; width: 1px; background-color: #334155;"></div>
+
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">📚</span>
+                <div>
+                    <div style="font-size: 11px; text-transform: uppercase; color: #94A3B8; font-weight: 600; letter-spacing: 0.5px;">Kho Tri Thức & SOP</div>
+                    <div style="font-size: 16px; font-weight: 700; color: #38BDF8;">{total_docs} Văn Bản Chuẩn</div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # 3. KHU VUC NOI DUNG TRANG CHU
+    c_left, c_right = st.columns([2.3, 1.2])
+
+    with c_left:
+        st.subheader("📢 Bảng Tin Điều Hành & An Toàn Lao Động")
+        st.caption("Chỉ đạo sản xuất, lịch bảo trì và an toàn ca kíp cho 2 nhà máy")
+        
+        try:
+            announcements = get_records("Announcements")
+            if announcements:
+                active_announcements = [
+                    a for a in announcements 
+                    if str(a.get("Status", "")).strip().upper() == "ACTIVE"
+                ]
+                if active_announcements:
+                    for item in reversed(active_announcements[-5:]):
+                        date_str = item.get("Publish_Date", "")
+                        title_str = item.get("Title", "Thông báo")
+                        with st.expander(f"📌 [{date_str}] {title_str}", expanded=True):
+                            st.write(item.get("Content", ""))
+                            st.caption(
+                                f"Ban hành bởi: **{item.get('Created_By', 'Ban Lãnh Đạo')}** | "
+                                f"Phạm vi: **{item.get('Department', 'Toàn công ty')}**"
+                            )
                 else:
-                    salt = bcrypt.gensalt(rounds=12)
-                    hashed = bcrypt.hashpw(new_pw.encode("utf-8"), salt).decode("utf-8")
-                    username = user.get("Username")
-                    if update_user_password(username, hashed):
-                        write_audit_log(username, "CHANGE_PASSWORD", "Sidebar", "Doi mat khau ca nhan")
-                        st.success("Đổi mật khẩu thành công!")
-                    else:
-                        st.error("Lỗi cập nhật. Vui lòng thử lại.")
+                    st.info("Hiện tại chưa có thông báo mới.")
+            else:
+                st.info("Chưa có dữ liệu bảng tin.")
+        except Exception:
+            st.info("Bảng tin đang kết nối máy chủ...")
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("🚪 Đăng Xuất", use_container_width=True, type="secondary"):
-        logout()
-
-# THANH TAB DIEU HUONG CHINH PHIA TREN CUNG (TOP NAVIGATION)
-user_role = str(user.get("Role", "")).upper()
-is_admin = user_role in ["SYSTEM_ADMIN", "SUPER_ADMIN", "HR_ADMIN"]
-
-if is_admin:
-    tab_home, tab_docs, tab_admin = st.tabs([
-        "🏠 Trang Chủ & Bảng Tin", 
-        "📚 Kho Quy Trình & Biểu Mẫu", 
-        "⚙️ Quản Trị Hệ Thống"
-    ])
-    with tab_home:
-        show_home(user)
-    with tab_docs:
-        show_documents(user)
-    with tab_admin:
-        show_admin(user)
-else:
-    tab_home, tab_docs = st.tabs([
-        "🏠 Trang Chủ & Bảng Tin", 
-        "📚 Kho Quy Trình & Biểu Mẫu"
-    ])
-    with tab_home:
-        show_home(user)
-    with tab_docs:
-        show_documents(user)
+    with c_right:
+        st.subheader("⚡ Lối Tắt Vận Hành")
+        st.caption("Chỉ dẫn kỹ thuật thường dùng")
+        
+        st.markdown(
+            """
+            * 🛡️ **An Toàn Lao Động:** Tuân thủ 100% đồ bảo hộ cá nhân (PPE) khi vào xưởng cán.
+            * ⏱️ **Giao Ca:** Thực hiện bàn giao số liệu lò và mác thép trước 15 phút.
+            * 🔍 **Kiểm Soát QA/QC:** Kiểm tra biên bản thử kéo, uốn trước khi xuất xưởng.
+            * 🚢 **Logistics:** Tiêu chuẩn chằng buộc (Lashing) cuộn cán nguội container.
+            """
+        )
+        
+        st.markdown("---")
+        st.markdown("📞 **Đường Dây Nóng Khẩn Cấp:**")
+        st.markdown(
+            """
+            * Y tế & Cấp cứu NM1 / NM2: **Ext 115**
+            * Trực ban An toàn (HSE): **Ext 114**
+            * IT & Hệ thống ERP: **Ext 102**
+            """
+        )
