@@ -16,7 +16,6 @@ def get_gspread_client():
         raise ValueError("Chua cau hinh st.secrets['gcp_service_account']. Vui long kiem tra lai.")
     
     creds_info = dict(st.secrets["gcp_service_account"])
-    # Xu ly private_key chua escape newline
     if "private_key" in creds_info and "\\n" in creds_info["private_key"]:
         creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
         
@@ -64,4 +63,26 @@ def append_record(worksheet_name, record):
         return True
     except Exception as e:
         st.error(f"Loi khi ghi vao sheet '{worksheet_name}': {str(e)}")
+        return False
+
+def update_user_password(username, new_password_hash):
+    """
+    Cap nhat mat khau ma hoa (Password_Hash) moi cho username trong sheet Users.
+    """
+    try:
+        sh = get_spreadsheet()
+        worksheet = sh.worksheet("Users")
+        users = worksheet.get_all_records()
+        
+        # Cot Password_Hash la cot H (cot so 8)
+        headers = worksheet.row_values(1)
+        pwd_col_idx = headers.index("Password_Hash") + 1 if "Password_Hash" in headers else 8
+        
+        for idx, u in enumerate(users, start=2):
+            if str(u.get("Username", "")).strip().lower() == str(username).strip().lower():
+                worksheet.update_cell(idx, pwd_col_idx, new_password_hash)
+                return True
+        return False
+    except Exception as e:
+        st.error(f"Loi khi cap nhat mat khau: {str(e)}")
         return False
