@@ -1,13 +1,13 @@
 import streamlit as st
-from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+from google.oauth2.service_account import Credentials
 
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 
 @st.cache_resource(ttl=3600)
 def get_drive_service():
     """
-    Khoi tao Google Drive API Client (v3) bang Service Account.
+    Khoi tao va tra ve Google Drive API service client.
     """
     if "gcp_service_account" not in st.secrets:
         raise ValueError("Chua cau hinh st.secrets['gcp_service_account']. Vui long kiem tra lai.")
@@ -20,27 +20,29 @@ def get_drive_service():
     service = build("drive", "v3", credentials=creds)
     return service
 
-def list_files_in_folder(folder_id=None):
+def list_portal_documents():
     """
-    Lay danh sach tai lieu trong thu muc Google Drive chi dinh hoac thu muc goc duoc cau hinh.
-    Tra ve danh sach cac dict gom: id, name, mimeType, webViewLink, modifiedTime.
+    Lay danh sach cac tep tin va thu muc con ben trong thu muc goc METALIC_EMPLOYEE_PORTAL.
     """
-    if not folder_id:
-        folder_id = st.secrets.get("app", {}).get("drive_root_folder_id", "")
-        
-    if not folder_id or folder_id == "YOUR_DRIVE_FOLDER_ID":
-        return []
-        
     try:
         service = get_drive_service()
+        folder_id = st.secrets.get("app", {}).get("drive_root_folder_id", "")
+        if not folder_id:
+            return []
+            
         query = f"'{folder_id}' in parents and trashed = false"
         results = service.files().list(
             q=query,
-            fields="files(id, name, mimeType, webViewLink, modifiedTime, size)",
-            orderBy="folder, name"
+            fields="files(id, name, mimeType, webViewLink, modifiedTime)",
+            orderBy="folder, name",
+            pageSize=100
         ).execute()
         
         return results.get("files", [])
     except Exception as e:
-        st.warning(f"Loi khi truy van thu muc Google Drive: {str(e)}")
+        st.error(f"Loi khi truy van Google Drive API: {str(e)}")
         return []
+
+# Alias de tranh bat ky loi cu phap nao goi ten ham cu
+def get_drive_files():
+    return list_portal_documents()
