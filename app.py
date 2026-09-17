@@ -20,6 +20,16 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# An menu dieu huong mac dinh tu dong cua Streamlit
+st.markdown(
+    """
+    <style>
+    [data-testid="stSidebarNav"] {display: none;}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # Khoi tao trang thai dang nhap trong session_state
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
