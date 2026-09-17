@@ -1,13 +1,10 @@
 import streamlit as st
 import pandas as pd
-import bcrypt
-from services.sheets_service import get_records, update_user_password
-from services.audit_service import write_audit_log
+from services.sheets_service import get_records
 
 def show_home(user_info):
     """
     Giao dien Trang chu cho Nhan vien cong ty Metalic Viet Nam.
-    Tich hop tien ich Thong bao noi bo va Doi mat khau ca nhan.
     """
     st.markdown(
         f"""
@@ -23,7 +20,7 @@ def show_home(user_info):
         unsafe_allow_html=True
     )
 
-    # Thong tin chi so nhanh
+    # Thong so nhanh
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric(label="Mã định danh", value=user_info.get("Username", "---"))
@@ -60,33 +57,6 @@ def show_home(user_info):
             st.info("Hệ thống thông báo đang được cập nhật.")
 
     with c_right:
-        st.subheader("🔐 Đổi Mật Khẩu Cá Nhân")
-        with st.expander("Thay đổi mật khẩu tài khoản", expanded=False):
-            with st.form("change_password_form"):
-                new_pw = st.text_input("Mật khẩu mới:", type="password", placeholder="Nhập mật khẩu mới...")
-                confirm_pw = st.text_input("Xác nhận mật khẩu:", type="password", placeholder="Nhập lại mật khẩu mới...")
-                btn_change = st.form_submit_button("Lưu mật khẩu mới", type="primary", use_container_width=True)
-
-                if btn_change:
-                    if not new_pw or not confirm_pw:
-                        st.error("Vui lòng điền đầy đủ cả 2 trường.")
-                    elif len(new_pw) < 6:
-                        st.error("Mật khẩu mới phải có độ dài tối thiểu từ 6 ký tự.")
-                    elif new_pw != confirm_pw:
-                        st.error("Mật khẩu xác nhận không trùng khớp.")
-                    else:
-                        # Tao chuoi bam bcrypt va cap nhat vao Google Sheet
-                        salt = bcrypt.gensalt(rounds=12)
-                        hashed = bcrypt.hashpw(new_pw.encode("utf-8"), salt).decode("utf-8")
-                        username = user_info.get("Username")
-                        
-                        if update_user_password(username, hashed):
-                            write_audit_log(username, "CHANGE_PASSWORD", "User Profile", "Doi mat khau ca nhan thanh cong")
-                            st.success("Đổi mật khẩu thành công! Hãy ghi nhớ mật khẩu mới này.")
-                        else:
-                            st.error("Không thể cập nhật mật khẩu vào hệ thống. Vui lòng thử lại.")
-
-        st.markdown("---")
         st.subheader("🔗 Lối Tắt Tiện Ích")
         st.markdown(
             """
@@ -97,3 +67,4 @@ def show_home(user_info):
             - 📞 **Đường dây nóng hỗ trợ IT & Nhân sự**
             """
         )
+        st.info("💡 **Mẹo:** Vào mục **'Kho Tài Liệu'** ở menu bên trái để tra cứu toàn bộ hồ sơ, biểu mẫu và tài liệu kỹ thuật trên Google Drive.")
