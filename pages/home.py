@@ -1,85 +1,81 @@
 import streamlit as st
-import pandas as pd
 from services.sheets_service import get_records
 from services.drive_service import scan_all_drive_documents
 from services.audit_service import write_audit_log
 
-# Ham hien thi cua so doc van ban truc tiep ngay tai Trang chu
-@st.dialog("📖 Xem Văn Bản & Quy Trình Nhanh", width="large")
+@st.dialog("📖 Trình Xem Tài Liệu Nội Bộ", width="large")
 def preview_modal(doc_id, doc_name, preview_url):
-    st.markdown(f"#### 📄 [{doc_id}] {doc_name}")
+    st.markdown(f"### 📄 [{doc_id}] {doc_name}")
     if preview_url:
         st.markdown(
             f"""
-            <div style="border: 1px solid #CBD5E1; border-radius: 8px; overflow: hidden; margin-top: 10px;">
-                <iframe 
-                    src="{preview_url}" 
-                    width="100%" 
-                    height="620px" 
-                    allow="autoplay"
-                    style="border: none;">
-                </iframe>
+            <div style="border: 1px solid #E2E8F0; border-radius: 10px; overflow: hidden; margin-top: 10px;">
+                <iframe src="{preview_url}" width="100%" height="650px" style="border: none;"></iframe>
             </div>
-            <p style="color: #64748B; font-size: 12px; margin-top: 5px;">
-                * Chế độ đọc bảo mật: Tài liệu chỉ xem nội bộ, không cho phép tải xuống.
-            </p>
+            <div style="font-size: 12px; color: #94A3B8; margin-top: 8px;">* Chế độ xem an toàn: Không hỗ trợ tải xuống.</div>
             """,
             unsafe_allow_html=True
         )
     else:
-        st.warning("Chưa tìm thấy liên kết tệp khả dụng trên Google Drive.")
+        st.warning("Không tìm thấy liên kết xem.")
 
 def show_home(user_info):
-    """
-    Giao dien Trang chu tinh gon:
-    - Da loai bo hoan toan thanh chi so khong can thiet.
-    - Gan lien ket truc tiep cho tung muc trong Loi Tat Van Hanh.
-    """
-    # Lay danh sach file thuc te tu Drive de tao link dong
     docs = scan_all_drive_documents()
     docs_map = {d.get("Document_ID"): d for d in docs} if docs else {}
 
-    c_left, c_right = st.columns([2.2, 1.2])
+    col_main, col_side = st.columns([2.2, 1.1], gap="large")
 
-    with c_left:
-        st.subheader("📢 Bảng Tin Điều Hành & An Toàn Lao Động")
-        st.caption("Chỉ đạo sản xuất, lịch bảo dưỡng và an toàn ca kíp cho 2 nhà máy")
-        
+    with col_main:
+        st.markdown(
+            """
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span style="font-size: 18px; font-weight: 700; color: #0F172A;">Thông Báo & Chỉ Đạo Nội Bộ</span>
+                <span style="font-size: 12px; color: #64748B;">Cập nhật từ Ban Lãnh Đạo</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
         try:
             announcements = get_records("Announcements")
-            if announcements:
-                active_announcements = [
-                    a for a in announcements 
-                    if str(a.get("Status", "")).strip().upper() == "ACTIVE"
-                ]
-                if active_announcements:
-                    for item in reversed(active_announcements[-6:]):
-                        date_str = item.get("Publish_Date", "")
-                        title_str = item.get("Title", "Thông báo")
-                        with st.expander(f"📌 [{date_str}] {title_str}", expanded=True):
-                            st.write(item.get("Content", ""))
-                            st.caption(
-                                f"Ban hành bởi: **{item.get('Created_By', 'Ban Lãnh Đạo')}** | "
-                                f"Phạm vi: **{item.get('Department', 'Toàn công ty')}**"
-                            )
-                else:
-                    st.info("Hiện tại chưa có thông báo mới.")
+            active_list = [a for a in announcements if str(a.get("Status", "")).upper() == "ACTIVE"] if announcements else []
+            
+            if active_list:
+                for item in reversed(active_list[-5:]):
+                    st.markdown(
+                        f"""
+                        <div class="portal-card">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                <span style="background: #F1F5F9; color: #475569; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px;">{item.get('Publish_Date', '')}</span>
+                                <span style="font-size: 12px; color: #64748B;">Phạm vi: <b>{item.get('Department', 'Toàn công ty')}</b></span>
+                            </div>
+                            <div style="font-size: 15px; font-weight: 600; color: #0F172A; margin-bottom: 6px;">{item.get('Title', 'Thông báo')}</div>
+                            <div style="font-size: 13px; color: #475569; line-height: 1.5;">{item.get('Content', '')}</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
             else:
-                st.info("Chưa có dữ liệu bảng tin.")
+                st.info("Chưa có thông báo nào.")
         except Exception:
-            st.info("Bảng tin đang kết nối máy chủ...")
+            st.info("Đang nạp bảng tin...")
 
-    with c_right:
-        st.subheader("⚡ Lối Tắt Vận Hành & Biểu Mẫu")
-        st.caption("Bấm nút xem để mở văn bản trực tiếp")
+    with col_side:
+        st.markdown(
+            """
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span style="font-size: 18px; font-weight: 700; color: #0F172A;">Lối Tắt Vận Hành</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-        # Danh muc loi tat kem ma tai lieu thuc te trong kho Drive
         shortcuts = [
-            ("QD-HSE-01", "🛡️ An toàn lao động (PPE)", "Quy định bảo hộ cá nhân xưởng luyện cán"),
-            ("QD-CT-01", "⏱️ Chế độ ca kíp & Nội quy", "Quy định làm việc 3 ca 4 kíp 2 nhà máy"),
-            ("BM-QA-01", "📋 Nghiệm thu chất lượng thép (MTC)", "Biên bản thử kéo, uốn kiểm định mác thép"),
-            ("SOP-KV-02", "🚢 Đóng hàng container xuất khẩu", "Quy chuẩn chằng buộc (Lashing) cuộn cán nguội"),
-            ("BM-DC-01", "📝 Biểu mẫu bàn giao & Đơn từ", "Đơn xin nghỉ phép, bàn giao ca kíp")
+            ("QD-HSE-01", "🛡️ An toàn lao động (PPE)", "Quy định bảo hộ bắt buộc"),
+            ("QD-CT-01", "⏱️ Ca kíp & Kỷ luật", "Nội quy 3 ca 4 kíp NM1 & NM2"),
+            ("BM-QA-01", "📋 Nghiệm thu chất lượng thép", "Biên bản thử kéo mác thép MTC"),
+            ("SOP-KV-02", "🚢 Đóng hàng container XK", "Tiêu chuẩn chằng buộc (Lashing)"),
+            ("BM-DC-01", "📝 Biểu mẫu bàn giao & Nghỉ phép", "Đơn từ hành chính dùng chung")
         ]
 
         for code, label, desc in shortcuts:
@@ -87,15 +83,31 @@ def show_home(user_info):
             p_url = doc_info.get("Drive_URL", "")
             d_name = doc_info.get("Document_Name", label)
 
-            c_info, c_btn = st.columns([3, 1.2])
-            with c_info:
-                st.markdown(f"**{label}**")
-                st.caption(f"{desc} (`{code}`)")
-            with c_btn:
-                if st.button("Xem ngay", key=f"btn_sc_{code}", use_container_width=True):
-                    write_audit_log(user_info.get("Username"), "QUICK_SHORTCUT_VIEW", code, f"Xem nhanh {label}")
-                    preview_modal(code, d_name, p_url)
-            st.markdown("<hr style='margin: 4px 0 10px 0;'>", unsafe_allow_html=True)
+            st.markdown(
+                f"""
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600; color: #0F172A;">{label}</div>
+                        <div style="font-size: 11px; color: #64748B;">{desc}</div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            if st.button("Mở đọc văn bản", key=f"btn_card_{code}", use_container_width=True):
+                write_audit_log(user_info.get("Username"), "SHORTCUT_CLICK", code, f"Xem {label}")
+                preview_modal(code, d_name, p_url)
 
-        st.markdown("📞 **Đường Dây Nóng Khẩn Cấp:**")
-        st.caption("• Y tế & Cấp cứu NM1 / NM2: **Ext 115**\n\n• Trực ban An toàn (HSE): **Ext 114**\n\n• IT & Hệ thống ERP: **Ext 102**")
+        st.markdown(
+            """
+            <div class="portal-card" style="margin-top: 15px; background: #F8FAFC;">
+                <div style="font-weight: 600; font-size: 13px; color: #0F172A; margin-bottom: 6px;">📞 Đường Dây Nóng Khẩn Cấp</div>
+                <div style="font-size: 12px; color: #475569; line-height: 1.6;">
+                    • Cấp cứu y tế: <b>Ext 115</b><br>
+                    • Trực an toàn HSE: <b>Ext 114</b><br>
+                    • Hỗ trợ IT / ERP: <b>Ext 102</b>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
