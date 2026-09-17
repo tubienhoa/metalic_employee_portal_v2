@@ -3,7 +3,6 @@ import sys
 import os
 import bcrypt
 
-# Dam bao Python nhan dien thu muc goc cua du an
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
@@ -15,50 +14,110 @@ from pages.home import show_home
 from pages.documents import show_documents
 from pages.admin import show_admin
 
-# Cau hinh trang
 st.set_page_config(
-    page_title="Cổng thông tin Metalic Việt Nam",
+    page_title="Metalic Portal | Cổng Thông Tin Nội Bộ",
     page_icon="🏭",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# CSS tuy bien: An menu mac dinh, lam dep thanh Tab dieu huong tren cung
+# BO CSS THEME HIEN DAI (CHUAN CLAUDE ARTIFACT / SAAS DESIGN SYSTEM)
 st.markdown(
     """
     <style>
-    [data-testid="stSidebarNav"] {display: none;}
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
-    /* Canh chinh va tao phong cach hien dai cho thanh Tab dieu huong tren cung */
+    html, body, [class*="css"] {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        color: #0F172A;
+    }
+    
+    /* An mac dinh Streamlit */
+    [data-testid="stSidebarNav"], #MainMenu, footer, header {
+        display: none !important;
+    }
+    
+    .main .block-container {
+        padding-top: 2rem !important;
+        padding-bottom: 3rem !important;
+        max-width: 1400px;
+    }
+
+    /* Lam dep thanh Tab dieu huong tren cung (Pill Navigation) */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
         background-color: #F1F5F9;
-        padding: 8px 12px;
-        border-radius: 10px;
+        padding: 5px;
+        border-radius: 12px;
+        gap: 6px;
         border: 1px solid #E2E8F0;
-        margin-bottom: 20px;
+        margin-bottom: 25px;
     }
     .stTabs [data-baseweb="tab"] {
-        height: 46px;
-        font-weight: 600;
-        font-size: 15px;
-        padding: 0 20px;
+        height: 42px;
+        padding: 0 22px;
         border-radius: 8px;
+        font-weight: 500;
+        font-size: 14px;
         color: #475569;
         background-color: transparent;
-        border: none;
+        border: none !important;
+        transition: all 0.2s ease-in-out;
     }
     .stTabs [aria-selected="true"] {
         background-color: #FFFFFF !important;
-        color: #1E3A8A !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+        color: #0F172A !important;
+        font-weight: 600 !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+    }
+
+    /* Sidebar hien dai */
+    [data-testid="stSidebar"] {
+        background-color: #FAFAFA;
+        border-right: 1px solid #E5E7EB;
+    }
+    
+    /* Card Container */
+    .portal-card {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        transition: all 0.2s ease;
+    }
+    .portal-card:hover {
+        border-color: #CBD5E1;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.06);
+    }
+    
+    /* Nut bam toi gian */
+    div.stButton > button {
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 14px;
+        border: 1px solid #E2E8F0;
+        background-color: #FFFFFF;
+        color: #0F172A;
+        transition: all 0.15s ease;
+    }
+    div.stButton > button:hover {
+        border-color: #94A3B8;
+        background-color: #F8FAFC;
+    }
+    div.stButton > button[kind="primary"] {
+        background-color: #0F172A;
+        color: #FFFFFF;
+        border: none;
+    }
+    div.stButton > button[kind="primary"]:hover {
+        background-color: #1E293B;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# Kiem tra trang thai dang nhap
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
 if "user_info" not in st.session_state:
@@ -70,67 +129,68 @@ if not st.session_state["logged_in"] or not st.session_state["user_info"]:
 
 user = st.session_state["user_info"]
 
-# Thanh Sidebar ben trai: Chi giu thong tin ca nhan va cac tien ich tai khoan
+# SIDEBAR PROFILE PROFILE CAO CAP
 with st.sidebar:
-    st.markdown("### 🏭 METALIC VIỆT NAM")
-    st.caption("Cổng Thông Tin Nội Bộ 2 Nhà Máy")
-    st.markdown("---")
+    st.markdown(
+        """
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+            <div style="background: #0F172A; color: white; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px;">🏭</div>
+            <div>
+                <div style="font-weight: 700; font-size: 15px; color: #0F172A; line-height: 1.2;">METALIC VIETNAM</div>
+                <div style="font-size: 11px; color: #64748B;">Internal Employee Portal</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
     
-    st.markdown(f"👤 **{user.get('Full_Name', user.get('Username'))}**")
-    st.markdown(f"🏷️ Chức vụ: *{user.get('Position', 'Nhân viên')}*")
-    st.markdown(f"🏢 Khối/Phòng: *{user.get('Department', 'Văn phòng')}*")
-    st.markdown(f"🏭 Cơ sở trực thuộc: *Nhà máy {user.get('Factory', '1 & 2')}*")
-    st.markdown("---")
+    st.markdown(
+        f"""
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px; margin-bottom: 20px;">
+            <div style="font-size: 11px; text-transform: uppercase; color: #94A3B8; font-weight: 600; margin-bottom: 4px;">Tài khoản đăng nhập</div>
+            <div style="font-weight: 600; font-size: 15px; color: #0F172A;">{user.get('Full_Name', user.get('Username'))}</div>
+            <div style="font-size: 12px; color: #475569; margin-top: 2px;">{user.get('Position', 'Nhân viên')} • {user.get('Department', 'Văn phòng')}</div>
+            <div style="margin-top: 10px; display: flex; gap: 6px;">
+                <span style="background: #EFF6FF; color: #1E40AF; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 6px;">Nhà máy {user.get('Factory', '1')}</span>
+                <span style="background: #F1F5F9; color: #334155; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 6px;">{user.get('Role', 'EMPLOYEE')}</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-    with st.expander("🔐 Đổi mật khẩu tài khoản", expanded=False):
-        with st.form("sidebar_change_pwd_form"):
-            new_pw = st.text_input("Mật khẩu mới:", type="password", placeholder="Nhập pass mới...")
-            confirm_pw = st.text_input("Xác nhận lại:", type="password", placeholder="Nhập lại...")
-            btn_save = st.form_submit_button("Cập nhật", type="primary", use_container_width=True)
-            
-            if btn_save:
-                if not new_pw or not confirm_pw:
-                    st.error("Vui lòng điền đủ thông tin.")
-                elif len(new_pw) < 6:
-                    st.error("Tối thiểu 6 ký tự.")
-                elif new_pw != confirm_pw:
-                    st.error("Xác nhận không khớp.")
-                else:
+    with st.expander("🔐 Đổi mật khẩu", expanded=False):
+        with st.form("pwd_form"):
+            new_pw = st.text_input("Mật khẩu mới", type="password")
+            confirm_pw = st.text_input("Xác nhận", type="password")
+            if st.form_submit_button("Lưu mật khẩu", type="primary", use_container_width=True):
+                if new_pw and new_pw == confirm_pw and len(new_pw) >= 6:
                     salt = bcrypt.gensalt(rounds=12)
                     hashed = bcrypt.hashpw(new_pw.encode("utf-8"), salt).decode("utf-8")
-                    username = user.get("Username")
-                    if update_user_password(username, hashed):
-                        write_audit_log(username, "CHANGE_PASSWORD", "Sidebar", "Doi mat khau ca nhan")
-                        st.success("Đổi mật khẩu thành công!")
-                    else:
-                        st.error("Lỗi cập nhật. Vui lòng thử lại.")
+                    if update_user_password(user.get("Username"), hashed):
+                        write_audit_log(user.get("Username"), "CHANGE_PASSWORD", "Sidebar", "Doi mat khau")
+                        st.success("Cập nhật thành công!")
+                else:
+                    st.error("Mật khẩu không khớp hoặc dưới 6 ký tự.")
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("🚪 Đăng Xuất", use_container_width=True, type="secondary"):
+    if st.button("Đăng xuất", use_container_width=True):
         logout()
 
-# THANH TAB DIEU HUONG CHINH PHIA TREN CUNG (TOP NAVIGATION)
+# THANH DIEU HUONG TAB PHIA TREN
 user_role = str(user.get("Role", "")).upper()
 is_admin = user_role in ["SYSTEM_ADMIN", "SUPER_ADMIN", "HR_ADMIN"]
 
 if is_admin:
-    tab_home, tab_docs, tab_admin = st.tabs([
-        "🏠 Trang Chủ & Bảng Tin", 
-        "📚 Kho Quy Trình & Biểu Mẫu", 
-        "⚙️ Quản Trị Hệ Thống"
-    ])
-    with tab_home:
+    t_home, t_docs, t_admin = st.tabs(["Trang Chủ", "Kho Tài Liệu & Biểu Mẫu", "Quản Trị Hệ Thống"])
+    with t_home:
         show_home(user)
-    with tab_docs:
+    with t_docs:
         show_documents(user)
-    with tab_admin:
+    with t_admin:
         show_admin(user)
 else:
-    tab_home, tab_docs = st.tabs([
-        "🏠 Trang Chủ & Bảng Tin", 
-        "📚 Kho Quy Trình & Biểu Mẫu"
-    ])
-    with tab_home:
+    t_home, t_docs = st.tabs(["Trang Chủ", "Kho Tài Liệu & Biểu Mẫu"])
+    with t_home:
         show_home(user)
-    with tab_docs:
+    with t_docs:
         show_documents(user)
