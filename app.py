@@ -7,7 +7,7 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
 
-from services.auth_service import login_screen, logout
+from services.auth_service import login_screen, logout, PASSWORD_MIN_LENGTH
 from services.sheets_service import update_user_password
 from services.audit_service import write_audit_log
 from pages.home import show_home
@@ -163,15 +163,16 @@ with st.sidebar:
         with st.form("pwd_form"):
             new_pw = st.text_input("Mật khẩu mới", type="password")
             confirm_pw = st.text_input("Xác nhận", type="password")
+            st.caption(f"Mật khẩu tối thiểu {PASSWORD_MIN_LENGTH} ký tự.")
             if st.form_submit_button("Lưu mật khẩu", type="primary", use_container_width=True):
-                if new_pw and new_pw == confirm_pw and len(new_pw) >= 6:
+                if new_pw and new_pw == confirm_pw and len(new_pw) >= PASSWORD_MIN_LENGTH:
                     salt = bcrypt.gensalt(rounds=12)
                     hashed = bcrypt.hashpw(new_pw.encode("utf-8"), salt).decode("utf-8")
                     if update_user_password(user.get("Username"), hashed):
                         write_audit_log(user.get("Username"), "CHANGE_PASSWORD", "Sidebar", "Doi mat khau")
                         st.success("Cập nhật thành công!")
                 else:
-                    st.error("Mật khẩu không khớp hoặc dưới 6 ký tự.")
+                    st.error(f"Mật khẩu không khớp hoặc dưới {PASSWORD_MIN_LENGTH} ký tự.")
 
     if st.button("Đăng xuất", use_container_width=True):
         logout()

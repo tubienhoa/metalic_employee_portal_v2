@@ -1,15 +1,30 @@
 import streamlit as st
 import bcrypt
-from services.sheets_service import get_records
+from services.sheets_service import (
+    get_records,
+    increment_failed_attempts,
+    reset_failed_attempts,
+)
 from services.audit_service import write_audit_log
+
+# [PHASE 1 - P1] So lan dang nhap sai toi da truoc khi tai khoan bi khoa tu dong.
+# Khoa tu dong (do Failed_Attempts) khac voi khoa thu cong (Status = LOCKED, dung khi
+# nhan vien nghi viec) - Admin "Mo khoa" se reset ca hai.
+MAX_FAILED_ATTEMPTS = 5
+
+# Do dai mat khau toi thieu khi tao/doi mat khau (nang tu 6 len 8 ky tu - Phase 1).
+PASSWORD_MIN_LENGTH = 8
+
 
 def authenticate(username, password):
     """
     Kiem tra thong tin dang nhap:
     - Tim nguoi dung theo Username trong sheet Users
     - Kiem tra trang thai tai khoan: Status == 'ACTIVE'
+    - Kiem tra so lan dang nhap sai lien tiep (Failed_Attempts) - qua nguong thi khoa tu dong
     - Kiem tra mat khau bang bcrypt
-    Tra ve dictionary thong tin user neu thanh cong, nguoc lai tra ve None.
+    Tra ve dictionary thong tin user neu thanh cong, "LOCKED" neu tai khoan bi khoa,
+    nguoc lai tra ve None.
     """
     if not username or not password:
         return None
@@ -22,16 +37,25 @@ def authenticate(username, password):
     for u in users:
         # Kiem tra khop username (khong phan biet chu hoa thuong khi tim)
         if str(u.get("Username", "")).strip().lower() == str(username).strip().lower():
-            # Kiem tra trang thai Status
+            # Kiem tra trang thai Status (khoa thu cong - vi du nhan vien da nghi viec)
             status = str(u.get("Status", "")).strip().upper()
             if status != "ACTIVE":
                 return "LOCKED"
-            
+
+            # Kiem tra khoa tu dong do dang nhap sai qua nhieu lan
+            failed_attempts = int(u.get("Failed_Attempts", 0) or 0)
+            if failed_attempts >= MAX_FAILED_ATTEMPTS:
+                return "LOCKED"
+
             stored_hash = str(u.get("Password_Hash", "")).strip()
             try:
                 # Kiem tra mat khau bcrypt
                 if bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("utf-8")):
+                    reset_failed_attempts(u.get("Username"))
                     return u
+                else:
+                    increment_failed_attempts(u.get("Username"))
+                    return None
             except Exception:
                 return None
     return None
@@ -84,7 +108,7 @@ def logout():
     if "user_info" in st.session_state and st.session_state["user_info"]:
         user = st.session_state["user_info"].get("Username", "Unknown")
         write_audit_log(user, "LOGOUT", "Auth", "Nguoi dung chu dong dang xuat")
-    
+
     st.session_state["logged_in"] = False
     st.session_state["user_info"] = None
     st.rerun()
